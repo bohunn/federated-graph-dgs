@@ -1,0 +1,11 @@
+{
+  "gateway": {
+    "port": 4000
+  },
+  "subgraphs": [
+    {
+      "name": "accounts",
+      "url": "http://localhost:4010/graphql"
+    }
+  ]
+}

@@ -1,81 +1,80 @@
-const {ApolloServer} = require('@apollo/server');
-const {expressMiddleware} = require('@apollo/server/express4');
-const {ApolloGateway, IntrospectAndCompose} = require('@apollo/gateway');
+// index.js
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const actuator = require('express-actuator');
-const http = require('http');
-const cors = require('cors');
 const bodyParser = require('body-parser');
-const config = require('./config');
+const { ApolloServer } = require('@apollo/server');
+const { expressMiddleware } = require('@apollo/server/express4');
+const { ApolloGateway } = require('@apollo/gateway');
 
-// Create gateway instance
-const gateway = new ApolloGateway({
-    supergraphSdl: new IntrospectAndCompose({
-        subgraphs: config.subgraphs,
-        debug: config.gateway.debug
-    })
-});
+async function startApolloGateway() {
+    // Load entire config
+    const configFilePath = path.join(__dirname, 'gateway-config.json');
+    const configFile = fs.readFileSync(configFilePath, 'utf8');
+    const config = JSON.parse(configFile);
 
-const app = express();
+    // Create gateway
+    const gateway = new ApolloGateway({
+        serviceList: config.subgraphs,
+    });
 
-// Configure actuator options
-const actuatorOptions = {
-    basePath: '/actuator', // Base path for actuator endpoints
-    infoGitMode: 'simple', // Include git information in /info endpoint
-    infoBuildOptions: null, // Additional build information
-    customEndpoints: [
-        {
-            id: 'gateway-health', // Custom endpoint id
-            controller: async (req, res) => {
-                // Custom health check logic for the gateway
-                try {
-                    // You can add custom health checks here
-                    const health = {
-                        status: 'UP',
-                        gateway: {
+    // Actuator options
+    const actuatorOptions = {
+        basePath: '/actuator',
+        infoGitMode: 'simple',
+        infoBuildOptions: null,
+        customEndpoints: [
+            {
+                id: 'gateway-health',
+                controller: async (req, res) => {
+                    try {
+                        // Minimal custom check
+                        const health = {
                             status: 'UP',
-                            timestamp: new Date().toISOString()
-                        },
-                        details: {
-                            subgraphCount: config.subgraphs.length
-                        }
-                    };
-                    res.json(health);
-                } catch (error) {
-                    res.status(503).json({
-                        status: 'DOWN',
-                        error: error.message
-                    });
-                }
-            }
-        }
-    ]
-};
+                            gateway: {
+                                status: 'UP',
+                                timestamp: new Date().toISOString(),
+                            },
+                            details: {
+                                subgraphCount: config.subgraphs.length,
+                            },
+                        };
+                        res.json(health);
+                    } catch (error) {
+                        res.status(503).json({
+                            status: 'DOWN',
+                            error: error.message,
+                        });
+                    }
+                },
+            },
+        ],
+    };
 
-// Add actuator middleware before other routes
-app.use(actuator(actuatorOptions));
-
-(async () => {
+    // Init Apollo Server
     const server = new ApolloServer({
         gateway,
         subscriptions: false,
         debug: true,
-        tracing: true,
     });
 
+    // Start Apollo
     await server.start();
 
-    app.use(
-        '/graphql',
-        cors(),
-        bodyParser.json(),
-        expressMiddleware(server),
-    );
+    // Express app
+    const app = express();
+    app.use(actuator(actuatorOptions));
 
-    const httpServer = http.createServer(app);
+    app.use('/graphql', bodyParser.json(), expressMiddleware(server));
 
-    httpServer.listen({port: config.gateway.port}, () => {
-        console.log(`🚀 Apollo Gateway is running at http://localhost:${config.gateway.port}/graphql`);
-        console.log(`Health endpoints available at http://localhost:${config.gateway.port}/actuator`);
+    // Start listening
+    const port = config?.gateway?.port || 4000;
+    // Return the server instance so we can close it in tests
+    return app.listen(port, () => {
+        console.log(`\n🚀 Apollo Gateway is running at http://localhost:${port}/graphql`);
+        console.log(`Health endpoints available at http://localhost:${port}/actuator`);
     });
-})();
+}
+
+module.exports = { startApolloGateway };

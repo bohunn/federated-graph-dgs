@@ -4,7 +4,9 @@
   "description": "Federated Gateway App",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "repository": {
     "type": "git",
@@ -20,6 +22,13 @@
     "@apollo/gateway": "^2.9.2",
     "@apollo/server": "^4.11.0",
     "express": "^4.21.0",
-    "graphql": "^16.9.0"
+    "express-actuator": "^1.8.4",
+    "graphql": "^16.9.0",
+    "graphql-tag": "^2.12.6"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jst": "^0.0.13",
+    "supertest": "^7.0.0"
   }
 }
