@@ -11,7 +11,7 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 # Copy application files
-COPY . .
+COPY index.js index.js
 
 # Expose the port the app runs on
 EXPOSE 4000

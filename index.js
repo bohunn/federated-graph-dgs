@@ -78,3 +78,11 @@ async function startApolloGateway() {
 }
 
 module.exports = { startApolloGateway };
+
+(async () => {
+    try {
+      await startApolloGateway();
+    } catch (err) {
+      console.error('Failed to start Apollo Gateway:', err);
+    }
+  })();
